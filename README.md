@@ -16,6 +16,10 @@ CheckMate supplies **no channels, provider accounts, subscriptions, or playback 
 
 Only the **CheckMate live-TV catalog** is checked. Existing Nuvio addons, movies, series, and other content keep their normal behavior. Other addons can still display their own rows in global search.
 
+## Download
+
+Download the APK from [GitHub Releases](https://github.com/HackyRoot/CheckMate/releases/latest). Release APKs are signed; the signing key is not part of this repository. CI artifacts are debug builds and use a different key.
+
 ## Setup on your TV
 
 1. Sideload CheckMate on Android TV 8.0 or newer, then open it.
@@ -65,6 +69,8 @@ APK: `app/build/outputs/apk/debug/app-debug.apk`. GitHub Actions also builds a d
 - Automatic recovery watches explicit Nuvio playback errors for CheckMate-owned sources. It cannot reliably diagnose every silent decoder stall.
 - Keep the companion running for its localhost addon to work. It starts a foreground service and requests restart after TV boot; firmware can still restrict background apps.
 - Cold searches query several providers and can take seconds. Repeated searches reuse short-lived channel membership; stream URLs are fetched fresh.
+
+For an early experimental build or a CI artifact signed with another key, Android may require reinstalling before using the release APK. Save your provider configuration first.
 
 ## Privacy
 
