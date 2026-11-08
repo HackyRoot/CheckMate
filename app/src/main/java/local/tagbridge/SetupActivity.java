@@ -62,7 +62,7 @@ public final class SetupActivity extends Activity {
                     for(int i=0;i<addons.length();i++){
                         org.json.JSONObject addon=addons.optJSONObject(i);String url=addon==null?addons.optString(i,""):addon.optString("url","");
                         try{java.net.URI uri=new java.net.URI(url);String host=uri.getHost();if(("127.0.0.1".equals(host)||"localhost".equals(host))&&uri.getPort()==LiveAddonServer.PORT)continue;
-                            org.json.JSONArray parsed=CheckMateConfig.parseProviderLines(url);if(parsed.length()==1)urls.add(parsed.getString(0));
+                            org.json.JSONArray parsed=CheckMateConfig.parseProviderLines(CheckMateConfig.manifestFromBase(url));if(parsed.length()==1)urls.add(parsed.getString(0));
                         }catch(Exception ignored){}
                     }
                     if(!urls.isEmpty()){StringBuilder lines=new StringBuilder();for(String url:urls){if(lines.length()>0)lines.append('\n');lines.append(url);}found=lines.toString();break;}

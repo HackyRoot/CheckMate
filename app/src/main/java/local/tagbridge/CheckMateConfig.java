@@ -18,16 +18,16 @@ public final class CheckMateConfig {
     public static String tagAddress(Context c){return prefs(c).getString("tag_mac","");}
     public static JSONArray liveProviders(Context c){
         SharedPreferences p=prefs(c);
-        if(p.contains("live_providers"))return parse(p.getString("live_providers","[]"));
+        if(p.contains("live_providers"))return normalizeLegacy(parse(p.getString("live_providers","[]")));
         if(p.getBoolean("configured",false))return new JSONArray();
         JSONArray legacy=asset(c,"live-providers.json");
-        return legacy.length()>0?legacy:asset(c,"providers.json");
+        return normalizeLegacy(legacy.length()>0?legacy:asset(c,"providers.json"));
     }
     public static JSONArray buttonProviders(Context c){
         SharedPreferences p=prefs(c);
-        if(p.contains("button_providers"))return parse(p.getString("button_providers","[]"));
+        if(p.contains("button_providers"))return normalizeLegacy(parse(p.getString("button_providers","[]")));
         if(!p.getBoolean("configured",false)){
-            JSONArray legacy=asset(c,"providers.json");if(legacy.length()>0)return legacy;
+            JSONArray legacy=asset(c,"providers.json");if(legacy.length()>0)return normalizeLegacy(legacy);
         }
         return liveProviders(c);
     }
@@ -51,6 +51,22 @@ public final class CheckMateConfig {
         JSONArray button=buttonProviders(c),snap=manifestSnapshots(c);String address="";
         try{InputStream in=c.getAssets().open("device.json");ByteArrayOutputStream b=new ByteArrayOutputStream();int x;while((x=in.read())!=-1)b.write(x);in.close();address=normalizeTag(new org.json.JSONObject(b.toString("UTF-8")).optString("tag_mac",""));}catch(Exception absent){}
         prefs(c).edit().putString("tag_mac",address).putString("live_providers",live.toString()).putString("button_providers",button.toString()).putString("manifest_snapshots",snap.toString()).putBoolean("configured",true).commit();
+    }
+    /** Nuvio may export a base address with query configuration rather than a manifest path. */
+    public static String manifestFromBase(String value){
+        int q=value.indexOf('?');String path=q<0?value:value.substring(0,q),query=q<0?"":value.substring(q);
+        while(path.endsWith("/"))path=path.substring(0,path.length()-1);
+        return path+(path.endsWith("/manifest.json")?"":"/manifest.json")+query;
+    }
+    private static JSONArray normalizeLegacy(JSONArray values){
+        JSONArray normalized=new JSONArray();
+        for(int i=0;i<values.length();i++){
+            String value=values.optString(i,"");if(value.isEmpty())continue;
+            int q=value.indexOf('?');
+            if(q>=0&&!value.substring(0,q).endsWith("/manifest.json")&&value.endsWith("/manifest.json"))value=value.substring(0,value.length()-14);
+            normalized.put(manifestFromBase(value));
+        }
+        return normalized;
     }
     public static String providerBase(String manifest){
         int q=manifest.indexOf('?');String path=q<0?manifest:manifest.substring(0,q);

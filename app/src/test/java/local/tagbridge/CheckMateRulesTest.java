@@ -19,6 +19,9 @@ public class CheckMateRulesTest {
   String base=CheckMateConfig.providerBase("https://provider.example/profile/manifest.json?key=example");
   assertEquals("https://provider.example/profile/stream/series/test.json?key=example",CheckMateConfig.providerResource(base,"stream/series/test.json"));
  }
+ @Test public void nuvioQueryConfigurationIsNotDropped(){
+  assertEquals("https://provider.example/profile/manifest.json?key=example",CheckMateConfig.manifestFromBase("https://provider.example/profile?key=example"));
+ }
  @Test public void tagIsOptionalAndValidated(){
   assertEquals("",CheckMateConfig.normalizeTag(""));
   assertEquals("AA:BB:CC:DD:EE:FF",CheckMateConfig.normalizeTag("aa:bb:cc:dd:ee:ff"));
