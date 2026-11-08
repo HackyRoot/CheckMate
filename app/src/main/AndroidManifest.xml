@@ -1,0 +1,21 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+ <uses-feature android:name="android.software.leanback" android:required="true"/>
+ <uses-feature android:name="android.hardware.touchscreen" android:required="false"/>
+ <uses-feature android:name="android.hardware.bluetooth_le" android:required="false"/>
+ <uses-feature android:name="android.hardware.bluetooth" android:required="false"/>
+ <uses-feature android:name="android.hardware.location.gps" android:required="false"/>
+ <uses-permission android:name="android.permission.BLUETOOTH"/>
+ <uses-permission android:name="android.permission.BLUETOOTH_CONNECT"/>
+ <uses-permission android:name="android.permission.BLUETOOTH_ADMIN"/>
+ <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+ <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+ <uses-permission android:name="android.permission.INTERNET"/>
+ <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+ <application android:icon="@drawable/checkmate_icon" android:banner="@drawable/checkmate_banner" android:usesCleartextTraffic="true" android:label="CheckMate" android:theme="@android:style/Theme.Material.NoActionBar" android:allowBackup="false">
+  <receiver android:name=".BootReceiver" android:exported="true"><intent-filter><action android:name="android.intent.action.BOOT_COMPLETED"/></intent-filter></receiver>
+  <service android:name=".ProfileSelector" android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE" android:exported="true"><intent-filter><action android:name="android.accessibilityservice.AccessibilityService"/></intent-filter><meta-data android:name="android.accessibilityservice" android:resource="@xml/profile_accessibility"/></service>
+  <service android:name=".BridgeService" android:exported="false"/>
+  <activity android:name=".SetupActivity" android:exported="false"/>
+  <activity android:name=".MainActivity" android:exported="true"><intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LEANBACK_LAUNCHER"/></intent-filter></activity>
+ </application>
+</manifest>

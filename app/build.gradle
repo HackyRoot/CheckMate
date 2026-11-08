@@ -1,0 +1,36 @@
+plugins { id 'com.android.application' }
+android {
+    namespace 'local.tagbridge'
+    compileSdk 34
+    // GitHub sideload release; no Play Store distribution is configured.
+    lint { disable 'ExpiredTargetSdkVersion' }
+    defaultConfig {
+        applicationId 'local.tagbridge'
+        minSdk 26
+        targetSdk 28
+        versionCode 110
+        versionName '0.1.0'
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+    signingConfigs {
+        release {
+            if (System.getenv('CHECKMATE_KEYSTORE_PATH')) {
+                storeFile file(System.getenv('CHECKMATE_KEYSTORE_PATH'))
+                storePassword System.getenv('CHECKMATE_KEYSTORE_PASSWORD')
+                keyAlias 'checkmate'
+                keyPassword System.getenv('CHECKMATE_KEYSTORE_PASSWORD')
+            }
+        }
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            if (System.getenv('CHECKMATE_KEYSTORE_PATH')) signingConfig signingConfigs.release
+        }
+    }
+}
+
+dependencies { testImplementation 'junit:junit:4.13.2' }
