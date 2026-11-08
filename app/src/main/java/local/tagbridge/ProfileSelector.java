@@ -80,7 +80,8 @@ public class ProfileSelector extends AccessibilityService {
 
     public static boolean isNuvioActive() {
         ProfileSelector service=instance;
-        return service!=null&&belongsToNuvio(service.getRootInActiveWindow());
+        if(service==null)return false;android.os.PowerManager power=(android.os.PowerManager)service.getSystemService(POWER_SERVICE);
+        return (power==null||power.isInteractive())&&belongsToNuvio(service.getRootInActiveWindow());
     }
 
     public static boolean isOtherAppActive() {

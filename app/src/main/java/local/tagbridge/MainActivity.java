@@ -21,7 +21,7 @@ public class MainActivity extends Activity {
   String tag=CheckMateConfig.tagAddress(MainActivity.this).isEmpty()?"No tag configured (optional)":p.getBoolean("connected",false)?"Tag connected":"Tag reconnecting";
   String age=updated==0?"":" · read at "+android.text.format.DateFormat.format("HH:mm",updated);
   String search=p.getString("search","");
-  status.setText(tag+"\nBattery: "+(battery<0?"No reading yet":battery+"%"+age)+"\nProviders configured: "+CheckMateConfig.liveProviders(MainActivity.this).length()+"\n\n"+(search.isEmpty()?"Live TV: combined channels, providers first, quality first.":search)+"\n\nTag: one click → Hungama · two clicks → SmartTube");
+  status.setText(tag+"\nBattery: "+(battery<0?"No reading yet":battery+"%"+age)+"\nProviders configured: "+CheckMateConfig.liveProviders(MainActivity.this).length()+"\n\n"+(search.isEmpty()?"Live TV: combined channels, providers first, quality first.":"Last action: "+search)+"\n\nTag: one click → Hungama · two clicks → SmartTube");
   ui.postDelayed(this,2000);
  }};
  @Override public void onCreate(Bundle state){
@@ -33,6 +33,7 @@ public class MainActivity extends Activity {
   LinearLayout column=new LinearLayout(this);column.setOrientation(LinearLayout.VERTICAL);column.setPadding(48,28,48,28);scroll.addView(column);setContentView(scroll);
   TextView title=new TextView(this);title.setText("CheckMate");title.setTextSize(32);title.setTextColor(Color.WHITE);column.addView(title);
   status=new TextView(this);status.setTextColor(Color.LTGRAY);status.setTextSize(19);status.setPadding(0,18,0,18);column.addView(status);
+  button(column,"Play Hungama in Nuvio",new View.OnClickListener(){public void onClick(View v){startForegroundService(new Intent(MainActivity.this,BridgeService.class).setAction("local.tagbridge.PLAY_HUNGAMA"));}});
   button(column,"Setup providers and optional Bluetooth tag",new View.OnClickListener(){public void onClick(View v){startActivity(new Intent(MainActivity.this,SetupActivity.class));}});
   button(column,"Copy Nuvio addon URL",new View.OnClickListener(){public void onClick(View v){((ClipboardManager)getSystemService(CLIPBOARD_SERVICE)).setPrimaryClip(ClipData.newPlainText("CheckMate",LiveAddonServer.MANIFEST_URL));Toast.makeText(MainActivity.this,"Copied the local addon URL",Toast.LENGTH_SHORT).show();}});
   button(column,"Enable Nuvio playback automation",new View.OnClickListener(){public void onClick(View v){try{startActivity(new Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS));}catch(RuntimeException unavailable){Toast.makeText(MainActivity.this,"Open Android settings → Accessibility → CheckMate",Toast.LENGTH_LONG).show();}}});

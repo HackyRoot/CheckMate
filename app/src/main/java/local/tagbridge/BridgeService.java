@@ -19,9 +19,8 @@ public class BridgeService extends Service {
   public void onReceive(android.content.Context context,Intent intent){
    String action=intent.getAction();
    if(Intent.ACTION_SCREEN_OFF.equals(action)){
-    screenSlept=true;actionGeneration++;resolveAttempt++;searching=false;singlePending=false;
-    handler.removeCallbacks(singleClick);handler.removeCallbacks(searchLimit);
-    if(resolution!=null){resolution.cancel();resolution=null;}
+    screenSlept=true;singlePending=false;
+    handler.removeCallbacks(singleClick);
     if(livePlaybackController!=null)livePlaybackController.cancel();ProfileSelector.cancelPlayback();return;
    }
    if(BluetoothAdapter.ACTION_STATE_CHANGED.equals(action)){
@@ -36,9 +35,10 @@ public class BridgeService extends Service {
  private final Handler handler=new Handler(Looper.getMainLooper());
  private void report(final String s){Log.i("ITagBridge",s);}
  @Override public IBinder onBind(Intent i){return null;}
- @Override public int onStartCommand(Intent i,int flags,int id){if(i!=null&&"local.tagbridge.RECONNECT".equals(i.getAction()))retry("Reconnect requested",true);if(i!=null&&"local.tagbridge.RECONFIGURE".equals(i.getAction())){if(livePlaybackController!=null)livePlaybackController.stop();if(liveAddonServer!=null)liveAddonServer.stop();startLiveAddon();retryCount=0;retry("Configuration updated",false);}return START_STICKY;}
+ @Override public int onStartCommand(Intent i,int flags,int id){if(i!=null&&"local.tagbridge.RECONNECT".equals(i.getAction()))retry("Reconnect requested",true);if(i!=null&&"local.tagbridge.RECONFIGURE".equals(i.getAction())){if(livePlaybackController!=null)livePlaybackController.stop();if(liveAddonServer!=null)liveAddonServer.stop();startLiveAddon();retryCount=0;retry("Configuration updated",false);}if(i!=null&&"local.tagbridge.PLAY_HUNGAMA".equals(i.getAction()))launchHungama();return START_STICKY;}
  @Override public void onCreate(){super.onCreate();
   CheckMateConfig.migrateLegacy(this);
+  searchStatus("");
   NotificationManager nm=(NotificationManager)getSystemService(NOTIFICATION_SERVICE);
   nm.createNotificationChannel(new NotificationChannel("bridge","iTag connection",NotificationManager.IMPORTANCE_LOW));
   startForeground(1,new Notification.Builder(this,"bridge").setContentTitle("CheckMate").setContentText("Tag buttons and live TV checking").setSmallIcon(android.R.drawable.stat_sys_data_bluetooth).build());
@@ -144,17 +144,11 @@ public class BridgeService extends Service {
  };
  private long ignorePressUntil;
  private long lastButtonNotification;
- private int actionGeneration;
- private int resolveAttempt;
- private long searchDeadline;
- private boolean searching;
- private final Runnable searchLimit=new Runnable(){public void run(){
-  if(searching){resolveAttempt++;searching=false;if(resolution!=null)resolution.cancel();ProfileSelector.cancelPlayback();searchStatus("Search stopped at the one-minute limit.");android.widget.Toast.makeText(BridgeService.this,"Hungama search reached the one-minute limit",android.widget.Toast.LENGTH_LONG).show();}
- }};
  private boolean singlePending;
  private final Runnable singleClick=new Runnable(){public void run(){singlePending=false;launchHungama();}};
  private void handlePress(int code){
   long now=SystemClock.elapsedRealtime();
+  android.os.PowerManager power=(android.os.PowerManager)getSystemService(POWER_SERVICE);if(power!=null&&!power.isInteractive())return;
   if(getSharedPreferences("tag_status",MODE_PRIVATE).getBoolean("pause_buttons_for_test",false))return;
   if(code==1&&now-lastButtonNotification<80)return;
   lastButtonNotification=now;
@@ -166,53 +160,28 @@ public class BridgeService extends Service {
  }
  private void launchSmartTube(){
   if(livePlaybackController!=null)livePlaybackController.cancel();
-  searching=false;handler.removeCallbacks(searchLimit);
-  actionGeneration++;ignorePressUntil=SystemClock.elapsedRealtime()+1000;
+  ignorePressUntil=SystemClock.elapsedRealtime()+1000;
   handler.removeCallbacks(singleClick);singlePending=false;
-  if(resolution!=null){resolution.cancel();resolution=null;}
   ProfileSelector.cancelPlayback();
   Intent launch=getPackageManager().getLeanbackLaunchIntentForPackage("org.smarttube.beta");
   if(launch==null)launch=getPackageManager().getLaunchIntentForPackage("org.smarttube.beta");
   if(launch==null){report("SmartTube launch activity unavailable");return;}
   launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);startActivity(launch);report("Double click: SmartTube launched");
  }
- private HungamaResolver.Job resolution;
- private boolean nuvioOpenedForRequest;
  private void searchStatus(String message){getSharedPreferences("tag_status",MODE_PRIVATE).edit().putString("search",message).apply();}
  private void launchHungama(){
   if(livePlaybackController!=null)livePlaybackController.cancel();
-  final int generation=++actionGeneration;
-  ignorePressUntil=SystemClock.elapsedRealtime()+1000;
-  ProfileSelector.cancelPlayback();
-  searchDeadline=SystemClock.elapsedRealtime()+60000;handler.removeCallbacks(searchLimit);handler.postDelayed(searchLimit,60000);
-  nuvioOpenedForRequest=false;
-  searchStatus("Finding a working Hungama stream…");
-  android.widget.Toast.makeText(this,"Finding a working Hungama stream…",android.widget.Toast.LENGTH_SHORT).show();
-  if(resolution!=null)resolution.cancel();
-  resolveHungama(generation,new java.util.HashSet<String>());
+  ignorePressUntil=SystemClock.elapsedRealtime()+1000;ProfileSelector.cancelPlayback();
+  if(liveAddonServer==null||!liveAddonServer.isRunning()){android.widget.Toast.makeText(this,"Configure your provider manifests in CheckMate first",android.widget.Toast.LENGTH_LONG).show();return;}
+  try{
+   String id=LiveAddonServer.channelIdForName("Hungama");ProfileSelector.pendingUntil=SystemClock.elapsedRealtime()+60000;
+   Intent launch=new Intent();launch.setClassName("com.nuvio.tv","com.nuvio.tv.MainActivity");
+   launch.putExtra("contentId",id);launch.putExtra("contentType","series");launch.putExtra("videoId",id);launch.putExtra("name","Hungama");launch.putExtra("launchMode","stream");
+   launch.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_CLEAR_TASK);startActivity(launch);
+   searchStatus("Opened Hungama through the combined CheckMate catalog");report("Button uses the aggregated live channel pipeline");
+  }catch(Exception unavailable){ProfileSelector.cancelPlayback();report("Could not open Nuvio: "+unavailable.getClass().getSimpleName());android.widget.Toast.makeText(this,"Nuvio is unavailable",android.widget.Toast.LENGTH_LONG).show();}
  }
- private void resolveHungama(final int generation,final java.util.Set<String> rejected){
-  if(SystemClock.elapsedRealtime()>=searchDeadline){searching=true;searchLimit.run();return;}
-  searching=true;
-  final int attempt=++resolveAttempt;
-  resolution=HungamaResolver.start(this,new HungamaResolver.Listener(){
-   public void onProgress(String message){if(generation==actionGeneration&&attempt==resolveAttempt){report(message);searchStatus(message);}}
-   public void onFailure(String message){if(generation!=actionGeneration||attempt!=resolveAttempt)return;searching=false;searchStatus(message);report(message);android.widget.Toast.makeText(BridgeService.this,message,android.widget.Toast.LENGTH_LONG).show();}
-   public void onSelected(final HungamaResolver.Selection selected){
-    if(generation!=actionGeneration||attempt!=resolveAttempt)return;
-    searching=false;
-    searchStatus("Opening Hungama in Nuvio…");
-    ProfileSelector.armPlayback(selected.streamName,selected.streamTitle,new Runnable(){public void run(){
-     if(generation!=actionGeneration||attempt!=resolveAttempt)return;
-     rejected.add(selected.url);report("Nuvio rejected candidate; trying next fresh stream");
-     resolveHungama(generation,rejected);
-    }},new Runnable(){public void run(){if(generation==actionGeneration)report("Hungama playback confirmed in Nuvio");}});
-    ProfileSelector.pendingUntil=Math.min(ProfileSelector.pendingUntil,searchDeadline);
-    Intent launch=new Intent();launch.setClassName("com.nuvio.tv","com.nuvio.tv.MainActivity");launch.putExtra("contentId",selected.id);launch.putExtra("contentType",selected.type);launch.putExtra("videoId",selected.id);launch.putExtra("name",selected.channelName);launch.putExtra("launchMode","stream");launch.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK|(nuvioOpenedForRequest?Intent.FLAG_ACTIVITY_SINGLE_TOP:Intent.FLAG_ACTIVITY_CLEAR_TASK));nuvioOpenedForRequest=true;startActivity(launch);report("Delivered Hungama to existing Nuvio task");report(selected.nativeVerified?"TV-verified Hungama stream sent to Nuvio":"Trying inconclusive stream in Nuvio");
-   }
-  },rejected);
- }
- @Override public void onDestroy(){if(livePlaybackController!=null)livePlaybackController.stop();if(liveAddonServer!=null)liveAddonServer.stop();try{unregisterReceiver(wakeReceiver);}catch(Exception ignored){}if(resolution!=null)resolution.cancel();stopping=true;handler.removeCallbacksAndMessages(null);getSharedPreferences("tag_status",MODE_PRIVATE).edit().putBoolean("connected",false).apply();
+ @Override public void onDestroy(){if(livePlaybackController!=null)livePlaybackController.stop();if(liveAddonServer!=null)liveAddonServer.stop();try{unregisterReceiver(wakeReceiver);}catch(Exception ignored){}stopping=true;handler.removeCallbacksAndMessages(null);getSharedPreferences("tag_status",MODE_PRIVATE).edit().putBoolean("connected",false).apply();
   handler.removeCallbacks(batteryPoll);
   BluetoothGatt old=gatt;gatt=null;if(old!=null){try{old.disconnect();old.close();}catch(SecurityException ignored){}}super.onDestroy();}
 }

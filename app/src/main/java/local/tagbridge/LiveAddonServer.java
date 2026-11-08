@@ -82,6 +82,8 @@ public final class LiveAddonServer {
             this.createdAt = android.os.SystemClock.elapsedRealtime();
         }
     }
+    public boolean isRunning(){return !stopped&&server!=null&&!server.isClosed();}
+    public static String channelIdForName(String name)throws Exception{return groupId(normalizeChannelName(name));}
     public void setListener(Listener listener) { this.listener = listener; }
     public PlaybackSession getLastSession() { return lastSession; }
     /** Called only after Nuvio reports an explicit error for a source in this session. */
